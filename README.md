@@ -90,12 +90,13 @@ cd ../../../../../..
 ## Pre-trained Checkpoints
 Our models are hosted on [Hugging Face](https://huggingface.co/botaoye/noposplat) 🤗
 
-|                                                    Model name                                                    | Training resolutions | Training data |
-|:----------------------------------------------------------------------------------------------------------------:|:--------------------:|:-------------:|
-|                 [re10k.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/re10k.ckpt)                  |        256x256       |     re10k     |
-|                  [acid.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/acid.ckpt )                  |        256x256       |     acid      |
-|         [mixRe10kDl3dv.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/mixRe10kDl3dv.ckpt )         |        256x256       | re10k, dl3dv  |
-| [mixRe10kDl3dv_512x512.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/mixRe10kDl3dv_512x512.ckpt ) |        512x512       | re10k, dl3dv  |
+|                                                       Model name                                                       | Training resolutions | Training data | Input view num. |   
+|:----------------------------------------------------------------------------------------------------------------------:|:--------------------:|:-------------:|:---------------:|
+|                    [re10k.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/re10k.ckpt)                     |        256x256       |     re10k     |        2        |
+|                     [acid.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/acid.ckpt )                     |        256x256       |     acid      |        2        |
+|            [mixRe10kDl3dv.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/mixRe10kDl3dv.ckpt )            |        256x256       | re10k, dl3dv  |        2        |
+|    [mixRe10kDl3dv_512x512.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/mixRe10kDl3dv_512x512.ckpt )    |        512x512       | re10k, dl3dv  |        2        |
+|             [re10k_3views.ckpt]( https://huggingface.co/botaoye/NoPoSplat/resolve/main/re10k_3views.ckpt)              |        256x256       |     re10k     |        3        |
 
 We assume the downloaded weights are located in the `pretrained_weights` directory.
 
@@ -129,6 +130,8 @@ You can refer to the [re10k_1x8](config/experiment/re10k_1x8.yaml) for training 
 python -m src.main +experiment=re10k mode=test wandb.name=re10k dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_re10k.json checkpointing.load=./pretrained_weights/re10k.ckpt test.save_image=true
 # ACID
 python -m src.main +experiment=acid mode=test wandb.name=acid dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_acid.json checkpointing.load=./pretrained_weights/acid.ckpt test.save_image=true
+# RealEstate10K 3 Input Views
+python -m src.main +experiment=re10k_3view mode=test wandb.name=re10k_3view dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_re10k.json checkpointing.load=./pretrained_weights/re10k_3view.ckpt test.save_image=true
 ```
 You can set `wandb.name=SAVE_FOLDER_NAME` to specify the saving path.
 

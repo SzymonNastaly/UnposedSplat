@@ -5,7 +5,7 @@ import torch
 from jaxtyping import Float, Int64
 from torch import Tensor
 
-from .three_view_hack import add_third_context_index
+from .additional_view_hack import add_addtional_context_index
 from .view_sampler import ViewSampler
 
 
@@ -46,8 +46,8 @@ class ViewSamplerArbitrary(ViewSampler[ViewSamplerArbitraryCfg]):
                 self.cfg.context_views, dtype=torch.int64, device=device
             )
 
-            if self.cfg.num_context_views == 3 and len(self.cfg.context_views) == 2:
-                index_context = add_third_context_index(index_context)
+            if self.cfg.num_context_views >= 3 and len(self.cfg.context_views) == 2:
+                index_context = add_addtional_context_index(index_context, self.cfg.num_context_views)
             else:
                 assert len(self.cfg.context_views) == self.cfg.num_context_views
         index_target = torch.randint(

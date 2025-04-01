@@ -12,7 +12,7 @@ from ...evaluation.evaluation_index_generator import IndexEntry
 from ...global_cfg import get_cfg
 from ...misc.step_tracker import StepTracker
 from ..types import Stage
-from .three_view_hack import add_third_context_index
+from .additional_view_hack import add_addtional_context_index
 from .view_sampler import ViewSampler
 
 
@@ -65,10 +65,10 @@ class ViewSamplerEvaluation(ViewSampler[ViewSamplerEvaluationCfg]):
         overlap = entry.overlap if isinstance(entry.overlap, float) else 0.75 if entry.overlap == "large" else 0.25
         overlap = torch.tensor([overlap], dtype=torch.float32, device=device)
 
-        # Handle 2-view index for 3 views.
+        # Handle 2-view index for more views.
         v = self.num_context_views
-        if v > len(context_indices) and v == 3:
-            context_indices = add_third_context_index(context_indices)
+        if  v >= 3 and v > len(context_indices):
+            context_indices = add_addtional_context_index(context_indices, v)
 
         return context_indices, target_indices, overlap
 

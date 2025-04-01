@@ -8,6 +8,7 @@ from einops import rearrange
 from jaxtyping import Float
 from torch import Tensor, nn
 
+from .encoder_noposplat import EncoderNoPoSplatCfg
 from .backbone.croco.misc import transpose_to_landscape
 from .heads import head_factory
 from ...dataset.shims.bounds_shim import apply_bounds_shim
@@ -30,25 +31,6 @@ class OpacityMappingCfg:
     initial: float
     final: float
     warm_up: int
-
-
-@dataclass
-class EncoderNoPoSplatCfg:
-    name: Literal["uni_gauss_multi"]
-    d_feature: int
-    num_monocular_samples: int
-    backbone: BackboneCfg
-    visualizer: EncoderVisualizerEpipolarCfg
-    gaussian_adapter: GaussianAdapterCfg
-    apply_bounds_shim: bool
-    opacity_mapping: OpacityMappingCfg
-    gaussians_per_pixel: int
-    num_surfaces: int
-    gs_params_head_type: str
-    input_mean: tuple[float, float, float] = (0.5, 0.5, 0.5)
-    input_std: tuple[float, float, float] = (0.5, 0.5, 0.5)
-    pretrained_weights: str = ""
-    pose_free: bool = True
 
 
 def rearrange_head(feat, patch_size, H, W):
@@ -80,7 +62,7 @@ class EncoderNoPoSplatMulti(Encoder[EncoderNoPoSplatCfg]):
         self.gs_params_head_type = cfg.gs_params_head_type
 
         self.set_mean_head(output_mode='pts3d', head_type='dpt', landscape_only=True,
-                           depth_mode=('exp', -inf, inf), conf_mode=('exp', 1, inf),)
+                           depth_mode=('exp', -inf, inf), conf_mode=None,)
         self.set_gs_params_head(cfg, cfg.gs_params_head_type)
 
     def set_mean_head(self, output_mode, head_type, landscape_only, depth_mode, conf_mode):
