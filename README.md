@@ -130,6 +130,10 @@ You can refer to the [re10k_1x8](config/experiment/re10k_1x8.yaml) for training 
 python -m src.main +experiment=re10k mode=test wandb.name=re10k dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_re10k.json checkpointing.load=./pretrained_weights/re10k.ckpt test.save_image=true
 # ACID
 python -m src.main +experiment=acid mode=test wandb.name=acid dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_acid.json checkpointing.load=./pretrained_weights/acid.ckpt test.save_image=true
+# DTU
+python -m src.main +experiment=re10k mode=test wandb.name=dtu dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_dtu.json dataset.re10k.roots=[datasets/dtu] dataset.re10k.skip_bad_shape=false checkpointing.load=./pretrained_weights/re10k.ckpt test.save_image=true
+# ScanNet++
+python -m src.main +experiment=re10k mode=test wandb.name=scannetpp dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_scannetpp.json dataset.re10k.roots=[datasets/scannetpp] dataset.re10k.skip_bad_shape=false checkpointing.load=./pretrained_weights/re10k.ckpt test.save_image=true
 # RealEstate10K 3 Input Views
 python -m src.main +experiment=re10k_3view mode=test wandb.name=re10k_3view dataset/view_sampler@dataset.re10k.view_sampler=evaluation dataset.re10k.view_sampler.index_path=assets/evaluation_index_re10k.json checkpointing.load=./pretrained_weights/re10k_3view.ckpt test.save_image=true
 ```

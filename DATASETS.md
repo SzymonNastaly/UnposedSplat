@@ -62,12 +62,14 @@ If you would like to train on the high-resolution DL3DV dataset, you will need t
 
 You can download processed DTU datasets from [here](https://drive.google.com/file/d/1Bd9il_O1jjom6Lk9NP77K8aeQP0d9eEt/view?usp=drive_link).
 
+### ScanNet++
+
+You can download processed ScanNet++ datasets from [here](https://drive.google.com/file/d/1bmkNjXuWLhAOkf-6liS0yyARCybZyQSE/view?usp=sharing).
+
 ### ScanNet-1500
 
 For ScanNet-1500, you need to download download `test.npy` [here](https://github.com/zju3dv/LoFTR/blob/master/assets/scannet_test_1500/test.npz) and the corresponding test dataset [here](https://drive.google.com/file/d/1wtl-mNicxGlXZ-UQJxFnKuWPvvssQBwd/view).
 
-### Others
-
-We also test our method on ScanNet++ datasets for novel view synthesis. We will provide the download link later.
+## Custom Datasets
 
 If you would like to train and/or evaluate on additional datasets, just modify the [data processing scripts](src/scripts) to convert the dataset format. Kindly note the [camera conventions](https://github.com/cvg/NoPoSplat/tree/main?tab=readme-ov-file#camera-conventions) used in this codebase.
