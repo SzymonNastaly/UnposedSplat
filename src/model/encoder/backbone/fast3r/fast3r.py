@@ -34,9 +34,7 @@ class Fast3R(nn.Module):
     def __init__(
         self,
         encoder_args: dict,
-        decoder_args: dict,
-        head_args: dict,
-        freeze="none",
+        decoder_args: dict
     ):
         super(Fast3R, self).__init__()
 

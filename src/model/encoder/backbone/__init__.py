@@ -6,15 +6,17 @@ from .backbone_croco_multiview import AsymmetricCroCoMulti
 from .backbone_dino import BackboneDino, BackboneDinoCfg
 from .backbone_resnet import BackboneResnet, BackboneResnetCfg
 from .backbone_croco import AsymmetricCroCo, BackboneCrocoCfg
+from .backbone_fast3r import BackboneFast3R, BackboneFast3RCfg
 
 BACKBONES: dict[str, Backbone[Any]] = {
     "resnet": BackboneResnet,
     "dino": BackboneDino,
     "croco": AsymmetricCroCo,
     "croco_multi": AsymmetricCroCoMulti,
+    "fast3r": BackboneFast3R,
 }
 
-BackboneCfg = BackboneResnetCfg | BackboneDinoCfg | BackboneCrocoCfg
+BackboneCfg = BackboneResnetCfg | BackboneDinoCfg | BackboneCrocoCfg | BackboneFast3RCfg
 
 
 def get_backbone(cfg: BackboneCfg, d_in: int = 3) -> nn.Module:
