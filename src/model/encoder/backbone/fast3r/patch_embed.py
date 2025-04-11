@@ -12,7 +12,7 @@
 # in particular ManyAR_PatchEmbed that Handle images with non-square aspect ratio
 # --------------------------------------------------------
 import torch
-from fast3r.croco.models.blocks import PatchEmbed
+from .croco.models.blocks import PatchEmbed
 
 
 def get_patch_embed(patch_embed_cls, img_size, patch_size, enc_embed_dim):

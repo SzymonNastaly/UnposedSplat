@@ -1,0 +1,44 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.re10k: re10k
+  - override /loss: [mse, lpips]
+
+wandb:
+  name: re10k
+  tags: [re10k, 256x256]
+
+model:
+  encoder:
+    backbone:
+      name: fast3r
+    name: noposplat_multi
+    gs_params_head_type: dpt_gs
+    pose_free: true
+    intrinsics_embed_loc: encoder
+    intrinsics_embed_type: token
+  decoder:
+    make_scale_invariant: true
+
+dataset:
+  re10k:
+    view_sampler:
+      warm_up_steps: 9375
+      num_context_views: 10
+    roots: [/cluster/scratch/tgueloglu/re10k/re10k]
+
+optimizer:
+  lr: 2e-4
+  warm_up_steps: 125
+  backbone_lr_multiplier: 0.1
+
+data_loader:
+  train:
+    batch_size: 4
+
+trainer:
+  max_steps: 18751
+  val_check_interval: 500
+
+checkpointing:
+  every_n_train_steps: 9375

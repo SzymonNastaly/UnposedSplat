@@ -22,13 +22,15 @@ import torch
 import torch.distributed
 import torch.nn as nn
 import numpy as np
-from fast3r.croco.models.blocks import Block, PositionGetter
-from fast3r.croco.models.pos_embed import RoPE2D, get_1d_sincos_pos_embed_from_grid
-from fast3r.components.llama import TransformerBlock, RMSNorm, precompute_freqs_cis
-from fast3r.patch_embed import get_patch_embed
+from .croco.models.blocks import Block, PositionGetter
+from .croco.models.pos_embed import RoPE2D, get_1d_sincos_pos_embed_from_grid
+from .components.llama import TransformerBlock, RMSNorm, precompute_freqs_cis
+from .patch_embed import get_patch_embed
 from functools import partial
 
-log = pylogger.RankedLogger(__name__, rank_zero_only=True)
+
+
+# log = pylogger.RankedLogger(__name__, rank_zero_only=True) # commented out for initial testing
 
 class Fast3R(nn.Module):
     def __init__(
