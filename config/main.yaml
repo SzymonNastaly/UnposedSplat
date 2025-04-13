@@ -71,4 +71,4 @@ trainer:
 
 hydra:
   run:
-    dir: outputs/exp_${wandb.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: /cluster/scratch/tgueloglu/outputs/exp_${wandb.name}/${now:%Y-%m-%d_%H-%M-%S}
