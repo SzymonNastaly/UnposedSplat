@@ -77,6 +77,44 @@ class Fast3R(nn.Module):
     def load_state_dict(self, ckpt, **kw):
         return super().load_state_dict(ckpt, **kw)
 
+
+    def load_from_dust3r_checkpoint(self, dust3r_checkpoint_path: str):
+        """Load a Dust3R checkpoint into the model.
+        Only load the patch_embed, enc_blocks, enc_norm components from the checkpoint.
+
+        Args:
+            dust3r_checkpoint_path (str): Path to the Dust3R checkpoint.
+        """
+        # Load the checkpoint
+        checkpoint = torch.load(dust3r_checkpoint_path, weights_only=False)['model']
+
+        # Initialize state dictionaries for different components
+        encoder_state_dict = {}
+
+        # Prepare to track loaded keys
+        loaded_keys = set()
+
+        # Split the checkpoint into encoder and downstream head
+        for key, value in checkpoint.items():
+            if key.startswith("patch_embed") or key.startswith("enc_blocks") or key.startswith("enc_norm"):
+                if isinstance(self.encoder, CroCoEncoder):
+                    new_key = key.replace("patch_embed", "encoder.patch_embed") \
+                                 .replace("enc_blocks", "encoder.enc_blocks") \
+                                 .replace("enc_norm", "encoder.enc_norm")
+                    encoder_state_dict[new_key] = value
+                    loaded_keys.add(key)  # Tentatively mark as loaded
+
+        # Load the encoder part into the model if it is an instance of CroCoEncoder
+        if isinstance(self.encoder, CroCoEncoder):
+            load_result = self.load_state_dict(encoder_state_dict, strict=False)
+
+            # Remove keys that failed to load
+            missing_keys = set(load_result.missing_keys)
+            unexpected_keys = set(load_result.unexpected_keys)
+            loaded_keys -= (missing_keys | unexpected_keys)
+        del checkpoint
+
+
     def _encode_images(self, views, chunk_size=400):
         B = views[0]["img"].shape[0]
 

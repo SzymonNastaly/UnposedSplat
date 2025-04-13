@@ -48,6 +48,8 @@ class BackboneFast3RCfg:
 class BackboneFast3R(Fast3R):
     def __init__(self, cfg: BackboneFast3RCfg, d_in: int) -> None:
         super().__init__(fast3r_params['encoder_args'], fast3r_params['decoder_args'])
+
+        self.load_from_dust3r_checkpoint("/cluster/home/tgueloglu/3DV/UnposedSplat/pretrained_weights/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth")
         
         self.patch_embed_cls = cfg.patch_embed_cls
         self.intrinsics_embed_encoder_dim = 0
