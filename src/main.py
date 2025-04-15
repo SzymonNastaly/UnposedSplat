@@ -123,8 +123,15 @@ def train(cfg_dict: DictConfig):
     # Load the encoder weights.
     if cfg.model.encoder.pretrained_weights and cfg.mode == "train":
         weight_path = cfg.model.encoder.pretrained_weights
-        ckpt_weights = torch.load(weight_path, map_location='cpu')
-        if 'model' in ckpt_weights:
+        ckpt_weights = torch.load(weight_path, map_location='cpu')        
+        if sum([key.startswith('downstream_head_local') for key in ckpt_weights]) > 0:
+            encoder_weights = {k[8:]: v for k, v in ckpt_weights.items() if k.startswith('encoder.')}
+            downstream_head1_weights = {'downstream_head1' + key[len('downstream_head_local'):]: v for key, v in ckpt_weights.items() if key.startswith('downstream_head_local')}
+            downstream_head2_weights = {'downstream_head2' + key[len('downstream_head'):]: v for key, v in ckpt_weights.items() if key.startswith('downstream_head')}
+            decoder_weights = {k[8:]: v for k, v in ckpt_weights.items() if k.startswith('decoder.')}
+            ckpt_weights = encoder_weights | downstream_head1_weights | downstream_head2_weights | decoder_weights
+            missing_keys, unexpected_keys = encoder.load_state_dict(ckpt_weights, strict=False)
+        elif 'model' in ckpt_weights:
             ckpt_weights = ckpt_weights['model']
             ckpt_weights = checkpoint_filter_fn(ckpt_weights, encoder)
             missing_keys, unexpected_keys = encoder.load_state_dict(ckpt_weights, strict=False)

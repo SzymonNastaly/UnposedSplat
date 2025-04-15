@@ -17,6 +17,7 @@ model:
     pose_free: true
     intrinsics_embed_loc: encoder
     intrinsics_embed_type: token
+    pretrained_weights: '/cluster/home/tgueloglu/3DV/UnposedSplat/pretrained_weights/Fast3R_ViT_Large_512/Fast3R_ViT_Large_512.pth'
   decoder:
     make_scale_invariant: true
 

@@ -62,7 +62,7 @@ class EncoderNoPoSplatMulti(Encoder[EncoderNoPoSplatCfg]):
         self.gs_params_head_type = cfg.gs_params_head_type
 
         self.set_mean_head(output_mode='pts3d', head_type='dpt', landscape_only=True,
-                           depth_mode=('exp', -inf, inf), conf_mode=None,)
+                           depth_mode=('exp', -inf, inf), conf_mode=self.backbone.conf_mode,)
         self.set_gs_params_head(cfg, cfg.gs_params_head_type)
 
     def set_mean_head(self, output_mode, head_type, landscape_only, depth_mode, conf_mode):
