@@ -112,6 +112,8 @@ class ViewSamplerBounded(ViewSampler[ViewSamplerBoundedCfg]):
         if self.cfg.num_context_views > 2:
             num_extra_views = self.cfg.num_context_views - 2
             extra_views = []
+            if index_context_right - index_context_left < num_extra_views:
+                raise ValueError("Context too small")
             while len(set(extra_views)) != num_extra_views:
                 extra_views = torch.randint(
                     index_context_left + 1,
