@@ -1,0 +1,45 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.dl3dv: dl3dv
+  - override /loss: [mse, lpips]
+
+wandb:
+  name: dl3dv
+  tags: [dl3dv, 256x256]
+
+model:
+  encoder:
+    backbone:
+      name: fast3r
+    name: noposplat_multi
+    gs_params_head_type: dpt_gs
+    pose_free: true
+    intrinsics_embed_loc: encoder
+    intrinsics_embed_type: token
+    pretrained_weights: '/cluster/home/tgueloglu/3DV/UnposedSplat/pretrained_weights/Fast3R_ViT_Large_512/Fast3R_ViT_Large_512.pth'
+  decoder:
+    make_scale_invariant: true
+
+dataset:
+  dl3dv:
+    view_sampler:
+      num_context_views: 20
+      warm_up_steps: 9375
+    roots: [/cluster/project/cvg/data/dl3dv]
+
+optimizer:
+  lr: 2e-4
+  warm_up_steps: 125
+  backbone_lr_multiplier: 0.1
+
+data_loader:
+  train:
+    batch_size: 2
+
+trainer:
+  max_steps: 18751
+  val_check_interval: 500
+
+checkpointing:
+  every_n_train_steps: 9375
