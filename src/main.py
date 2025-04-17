@@ -12,6 +12,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.plugins.environments import SLURMEnvironment
 from omegaconf import DictConfig, OmegaConf
+import re
 
 from src.misc.weight_modify import checkpoint_filter_fn
 from src.model.distiller import get_distiller
@@ -123,12 +124,26 @@ def train(cfg_dict: DictConfig):
     # Load the encoder weights.
     if cfg.model.encoder.pretrained_weights and cfg.mode == "train":
         weight_path = cfg.model.encoder.pretrained_weights
-        ckpt_weights = torch.load(weight_path, map_location='cpu')        
+        ckpt_weights = torch.load(weight_path, map_location='cpu')
         if sum([key.startswith('downstream_head_local') for key in ckpt_weights]) > 0:
-            encoder_weights = {k[8:]: v for k, v in ckpt_weights.items() if k.startswith('encoder.')}
-            downstream_head1_weights = {'downstream_head1' + key[len('downstream_head_local'):]: v for key, v in ckpt_weights.items() if key.startswith('downstream_head_local')}
-            downstream_head2_weights = {'downstream_head2' + key[len('downstream_head'):]: v for key, v in ckpt_weights.items() if key.startswith('downstream_head')}
-            decoder_weights = {k[8:]: v for k, v in ckpt_weights.items() if k.startswith('decoder.')}
+            # Load Fast3r weights
+            def rename_head_weights(key_prefix, new_key_prefix):
+                updated_head_dict = {}
+                for k, v in ckpt_weights.items():
+                    if k.startswith(key_prefix):
+                        new_key = new_key_prefix + k[len(key_prefix):]
+                        key_components = new_key.split('.')
+                        pattern = r'^layer(\d)+_rn$'
+                        if len(key_components) > 3 and re.match(pattern, key_components[3]):
+                            layer_number = int(re.match(pattern, key_components[3]).group(1))
+                            duplicated_key = new_key.replace(key_components[3], f'layer_rn.{str(layer_number - 1)}')
+                            updated_head_dict[duplicated_key] = v
+                        updated_head_dict[new_key] = v
+                return updated_head_dict
+            encoder_weights = {'backbone.' + k: v for k, v in ckpt_weights.items() if k.startswith('encoder.')}
+            downstream_head1_weights = rename_head_weights('downstream_head', 'downstream_head1')
+            downstream_head2_weights = rename_head_weights('downstream_head', 'downstream_head2')
+            decoder_weights = {'backbone.' + k: v for k, v in ckpt_weights.items() if k.startswith('decoder.')}
             ckpt_weights = encoder_weights | downstream_head1_weights | downstream_head2_weights | decoder_weights
             missing_keys, unexpected_keys = encoder.load_state_dict(ckpt_weights, strict=False)
         elif 'model' in ckpt_weights:

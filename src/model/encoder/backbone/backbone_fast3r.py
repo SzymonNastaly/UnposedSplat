@@ -8,29 +8,30 @@ inf = float('inf')
 #FIXME: these params should be read from some config file
 fast3r_params = {
     'encoder_args' : {
-        'encoder_type': 'croco',
-        'img_size': 512,
-        'patch_size': 16,
-        'patch_embed_cls': 'PatchEmbedDust3R',
-        'embed_dim': 1024,
-        'num_heads': 16,
-        'depth': 24,
-        'mlp_ratio': 4,
-        'pos_embed': 'RoPE100',
-        'attn_implementation': 'flash_attention',
+        "attn_implementation": "flash_attention",
+        "depth": 24,
+        "embed_dim": 1024,
+        "encoder_type": "croco",
+        "img_size": 512,
+        "mlp_ratio": 4,
+        "num_heads": 16,
+        "patch_embed_cls": "PatchEmbedDust3R",
+        "patch_size": 16,
+        "pos_embed": "RoPE100"
     },
     'decoder_args' : {
-        'decoder_type': 'fast3r',
-        'random_image_idx_embedding': True,
-        'enc_embed_dim': 1024, # same as encoder embed_dim
-        'embed_dim': 1024,
-        'num_heads': 16,
-        'depth': 24,
-        'mlp_ratio': 4.0,
-        'qkv_bias': True,
-        'drop': 0.0,
-        'attn_drop': 0.0,
-        'attn_implementation': 'flash_attention',
+        "attn_bias_for_inference_enabled": False,
+        "attn_drop": 0.0,
+        "attn_implementation": "flash_attention",
+        "decoder_type": "fast3r",
+        "depth": 24,
+        "drop": 0.0,
+        "embed_dim": 1024,
+        "enc_embed_dim": 1024,
+        "mlp_ratio": 4.0,
+        "num_heads": 16,
+        "qkv_bias": True,
+        "random_image_idx_embedding": True
     }
 }
 
@@ -50,8 +51,6 @@ class BackboneFast3RCfg:
 class BackboneFast3R(Fast3R):
     def __init__(self, cfg: BackboneFast3RCfg, d_in: int) -> None:
         super().__init__(fast3r_params['encoder_args'], fast3r_params['decoder_args'])
-
-        self.load_from_dust3r_checkpoint("/cluster/home/tgueloglu/3DV/UnposedSplat/pretrained_weights/DUSt3R_ViTLarge_BaseDecoder_512_dpt.pth")
         
         self.patch_embed_cls = cfg.patch_embed_cls
         self.intrinsics_embed_encoder_dim = 0
