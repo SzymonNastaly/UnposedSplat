@@ -1,0 +1,45 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.re10k: re10k
+  - override /loss: [mse, lpips, depth]
+
+wandb:
+  name: re10k_6view
+  tags: [re10k, 256x256]
+
+model:
+  encoder:
+    backbone:
+      name: fast3r
+    name: noposplat_multi
+    gs_params_head_type: dpt_gs
+    pose_free: true
+    intrinsics_embed_loc: encoder
+    intrinsics_embed_type: token
+    pretrained_weights: '/cluster/scratch/tgueloglu/outputs/exp_unposedsplat_re10k_5view_8batch/2025-05-08_06-02-38/checkpoints/epoch_0-step_18750.ckpt'
+  decoder:
+    make_scale_invariant: true
+
+dataset:
+  re10k:
+    view_sampler:
+      warm_up_steps: 9375
+      num_context_views: 5
+    roots: [/cluster/scratch/tgueloglu/re10k/re10k]
+
+optimizer:
+  lr: 1e-4
+  warm_up_steps: 125
+  backbone_lr_multiplier: 0.1
+
+data_loader:
+  train:
+    batch_size: 8
+
+trainer:
+  max_steps: 75004
+  val_check_interval: 100
+
+checkpointing:
+  every_n_train_steps: 9375
