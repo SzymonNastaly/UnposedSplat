@@ -22,7 +22,7 @@ import torch
 import torch.distributed
 import torch.nn as nn
 import numpy as np
-from .croco.models.blocks import Block, PositionGetter
+from .croco.models.blocks import Block, PositionGetter, CrossRefBlockWrapper
 from .croco.models.pos_embed import RoPE2D, get_1d_sincos_pos_embed_from_grid
 from .components.llama import TransformerBlock, RMSNorm, precompute_freqs_cis
 from .patch_embed import get_patch_embed
@@ -526,6 +526,121 @@ class Fast3RDecoder(nn.Module):
         final_output[-1] = x
 
         return final_output
+
+class Fast3RDecoderMultiRefView(Fast3RDecoder):
+    def __init__(
+        self,
+        random_image_idx_embedding: bool,
+        enc_embed_dim: int,
+        embed_dim: int = 768,
+        num_heads: int = 12,
+        depth: int = 12,
+        mlp_ratio: float = 4.0,
+        qkv_bias: bool = True,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        attn_implementation: str = "pytorch_naive",
+        attn_bias_for_inference_enabled=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        number_ref_views: int = 1,
+    ):
+        super(Fast3RDecoderMultiRefView, self).__init__(
+            random_image_idx_embedding=random_image_idx_embedding,
+            enc_embed_dim=enc_embed_dim,
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            depth=depth,
+            mlp_ratio=mlp_ratio,
+            qkv_bias=qkv_bias,
+            drop=drop,
+            attn_drop=attn_drop,
+            attn_implementation=attn_implementation,
+            attn_bias_for_inference_enabled=attn_bias_for_inference_enabled,
+            norm_layer=norm_layer
+        )
+        self.number_ref_views = number_ref_views
+        self.crossRefBlockWrapper = CrossRefBlockWrapper(
+            dec_depth=depth,
+            dec_embed_dim=embed_dim,
+            dec_num_heads=num_heads, # FIXME perhaps different value (smaller)
+            norm_im2_in_dec=True, # FIXME not sure if should be True
+            number_ref_views=number_ref_views,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6) # FIXME norm_layer correct?
+        )
+
+
+    def _get_random_ref_view_ids(self, input_views: int):
+        per_rank_generator = self._generate_per_rank_generator()
+        refernce_view_ids = torch.randperm(input_views, generator=per_rank_generator)[:self.number_ref_views]
+        return refernce_view_ids # 1D tensor with number_ref_views elements
+    
+    def except_i(x, i):
+        """ Returns a list of tensors excluding the i-th tensor from the input list x. """
+        return [x[j] for j in range(len(x)) if j != i]
+
+    def forward(self, encoded_feats, positions, image_ids):
+        """ Forward pass through the decoder.
+
+        Args:
+            encoded_feats (list of tensors): Encoded features for each view. Shape: B x Npatches x D
+            positions (list of tensors): Positional embeddings for each view. Shape: B x Npatches x 2
+            image_ids (tensor): Image IDs for each patch. Shape: B x Npatches
+        """
+        n_views = len(encoded_feats)
+        n_patches = encoded_feats[0].shape[1]
+        if self.number_ref_views >= n_views:
+            raise ValueError(f"Number of reference views {self.number_ref_views} exceeds the number of input views {n_views}")
+        pos = torch.cat(positions, dim=1) # FIXME assumes images have same number of patches (or more)
+        ref_view_ids = self._get_random_ref_view_ids(n_views)
+        x = []
+        image_pos = self._get_random_image_pos(encoded_feats=encoded_feats,
+                                                batch_size=encoded_feats[0].shape[0],
+                                                num_views=len(encoded_feats),
+                                                max_image_idx=self.image_idx_emb.shape[0] - 1,
+                                                device=x.device)
+        for i in range(self.number_ref_views):
+            encoded_feats[0], encoded_feats[ref_view_ids[i]] = encoded_feats[ref_view_ids[i]], encoded_feats[0] # swap the ref view with the first one
+            x_i = torch.cat(encoded_feats, dim=1)
+            x_i = self.decoder_embed(x)
+            x_i += image_pos # assumes images have same number of patches
+            x.append(x_i)
+            encoded_feats[0], encoded_feats[ref_view_ids[i]] = encoded_feats[ref_view_ids[i]], encoded_feats[0]
+        
+        for depth, blk in enumerate(self.dec_blocks):
+            for i in range(self.number_ref_views):
+                x[i] = blk(x[i], pos)
+            y = [None for _ in range(self.number_ref_views)]
+            for i in range(self.number_ref_views):
+                y[i] = self.crossRefBlockWrapper(x, n_views, n_patches, i, ref_view_ids, depth)
+            x = y
+        ########################################################
+        # TODO: process x[i] to make it passable to heads
+
+
+        """
+        Pseudo code:
+        for depth, blk in enumerate(self.dec_blocks):
+            #Forward pass through Decoder layer
+            for i in range(number_ref_views):
+                x[i][depth] = blk(x[i][depth-1], pos[i])
+            
+            #Forward pass through Cross Reference Layer
+            y =[None for _ in range(number_ref_views)]
+            for i in range(number_ref_views):  
+                y[i]= CrossRefBlock_wrapper(x[i][depth],except_i(x[depth],i))  
+
+            x.append(y) 
+
+            final_output.append(y)
+        
+        final_output = final_output[:,0]
+
+        x = final_output[-1]
+        x = self.dec_norm(x)
+        final_output[-1] = x
+
+        return final_output
+        """
 
 class LlamaDecoder(nn.Module):
     def __init__(

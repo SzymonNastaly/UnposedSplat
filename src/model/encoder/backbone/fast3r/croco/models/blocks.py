@@ -28,6 +28,8 @@ import torch
 import torch.nn as nn
 from torch.nn.functional import scaled_dot_product_attention
 from torch.nn.attention import SDPBackend
+from einops import rearrange
+from functools import partial
 
 
 def _ntuple(n):
@@ -191,6 +193,50 @@ class Attention(nn.Module):
         else:
             raise ValueError(f"Unknown attn_implementation: {self.attn_implementation}")
 
+        return x
+    
+
+class CrossRefBlockWrapper(nn.Module):
+    def __init__(
+        self,
+        dec_depth,
+        dec_embed_dim,
+        dec_num_heads,
+        norm_im2_in_dec,
+        number_ref_views=1,
+        mlp_ratio=4,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6)
+        ):
+        super().__init__()
+        self.number_ref_views = number_ref_views
+        self.dec_blocks = nn.ModuleList([
+            DecoderBlock(dec_embed_dim, dec_num_heads, mlp_ratio=mlp_ratio, qkv_bias=True, norm_layer=norm_layer, norm_mem=norm_im2_in_dec, rope=None)
+            for i in range(dec_depth)]) #FIXME what with rope
+
+
+    def forward(self, x_all, n_views, p_patches, ref_view_list_idx, ref_view_ids, depth):
+        x = x_all[ref_view_list_idx]
+        xs = [x_i for i, x_i in enumerate(x_all) if i != ref_view_list_idx]
+        x_per_view = rearrange(x, 'b (n_views p_patches) d -> b n_views p_patches d', n_views=n_views, p_patches=p_patches)
+        xs_per_view = [rearrange(xs[i], 'b (n_views p_patches) d -> b n_views p_patches d', n_views=n_views, p_patches=p_patches)
+                       for i in self.number_ref_views]
+        idx_to_view_id = [] # for each reference view, map idx to view id
+        for ref_idx in range(self.number_ref_views):
+            mapping = list(range(n_views))
+            mapping[0], mapping[ref_view_ids[ref_idx]] = mapping[ref_view_ids[ref_idx]], mapping[0]
+            idx_to_view_id.append(mapping)
+
+        for v in n_views:
+            ref_view_id = idx_to_view_id[ref_view_list_idx] # 2
+            ref_view_emb = x_per_view[:, v, :, :] # tensor
+            other_view_embs = []
+            for ref_idx in range(self.number_ref_views):
+                if ref_idx == ref_view_list_idx:
+                    continue
+                other_view_embs.append(xs_per_view[ref_idx][:, idx_to_view_id[ref_idx][ref_view_id], :, :])
+            # do cross-attention between ref_view_emb and other_view_embs
+            x_per_view[:, v, :, :] = self.dec_blocks[depth](ref_view_emb, other_view_embs, mv=True)
+        x = rearrange(x_per_view, 'b n_views p_patches d -> b (n_views p_patches) d', n_views=n_views, p_patches=p_patches)
         return x
 
 
@@ -364,12 +410,24 @@ class DecoderBlock(nn.Module):
         )
         self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
 
-    def forward(self, x, y, xpos, ypos):
-        x = x + self.drop_path(self.attn(self.norm1(x), xpos))
-        y_ = self.norm_y(y)
-        x = x + self.drop_path(self.cross_attn(self.norm2(x), y_, y_, xpos, ypos))
-        x = x + self.drop_path(self.mlp(self.norm3(x)))
-        return x, y
+    def forward(self, x, y, xpos, ypos, mv = False, coeff = 1.0):
+        if not mv:
+            x = x + self.drop_path(self.attn(self.norm1(x), xpos))
+            y_ = self.norm_y(y)
+            x = x + self.drop_path(self.cross_attn(self.norm2(x), y_, y_, xpos, ypos))
+            x = x + self.drop_path(self.mlp(self.norm3(x)))
+            return x, y
+        else:
+            ys = y
+            yposs = ypos
+            del y
+            del ypos
+            x = x + coeff * self.drop_path(self.attn(self.norm1(x), xpos)) # self-attn inside the view
+            ys_ = torch.cat([self.norm_y(y) for y in ys], 1) # y: [b, n_token, dim], ypose: [b, n_token, 2]
+            yposs = torch.cat(yposs, 1)
+            x = x + coeff * self.drop_path(self.cross_attn(self.norm2(x), ys_, ys_, xpos, yposs)) # cross attention taking other views\paths' features
+            x = x + coeff * self.drop_path(self.mlp(self.norm3(x)))
+            return x, ys
 
 
 # patch embedding
