@@ -214,29 +214,46 @@ class CrossRefBlockWrapper(nn.Module):
             for i in range(dec_depth)]) #FIXME what with rope
 
 
-    def forward(self, x_all, n_views, p_patches, ref_view_list_idx, ref_view_ids, depth):
-        x = x_all[ref_view_list_idx]
-        xs = [x_i for i, x_i in enumerate(x_all) if i != ref_view_list_idx]
-        x_per_view = rearrange(x, 'b (n_views p_patches) d -> b n_views p_patches d', n_views=n_views, p_patches=p_patches)
-        xs_per_view = [rearrange(xs[i], 'b (n_views p_patches) d -> b n_views p_patches d', n_views=n_views, p_patches=p_patches)
-                       for i in self.number_ref_views]
+    def forward(self, x_all, positions, n_views, p_patches, ref_view_idx, ref_view_ids, depth):
+        """ Forward function for cross-reference block wrapper
+        Args:
+            x_all: list of tensors of shape (b, n_views * p_patches, d), 
+                containing the embeddings for all reference views
+            positions: list of tensors of shape (b, n_views * p_patches, 2)
+            n_views: number of input views
+            p_patches: number of patches per view
+            ref_view_idx: index of the reference view (ref_view_ids[ref_view_idx] 
+                is the id of the reference view)
+            ref_view_ids: list of reference view ids
+            depth: depth of the decoder block to use
+        Returns:
+            x: tensor of shape (b, n_views * p_patches, d) containing encodings of all input views 
+                according to the reference view ref_view_ids[ref_view_idx], updated with information
+                from other reference views via cross-attention.
+        """
+        x_all_per_view = [rearrange(x_all[i], 'b (n_views p_patches) d -> b n_views p_patches d', n_views=n_views, p_patches=p_patches)
+                          for i in range(self.number_ref_views)]
         idx_to_view_id = [] # for each reference view, map idx to view id
-        for ref_idx in range(self.number_ref_views):
+        for ref_view_id in ref_view_ids:
             mapping = list(range(n_views))
-            mapping[0], mapping[ref_view_ids[ref_idx]] = mapping[ref_view_ids[ref_idx]], mapping[0]
+            mapping[0], mapping[ref_view_id] = mapping[ref_view_id], mapping[0]
             idx_to_view_id.append(mapping)
-
-        for v in n_views:
-            ref_view_id = idx_to_view_id[ref_view_list_idx] # 2
-            ref_view_emb = x_per_view[:, v, :, :] # tensor
-            other_view_embs = []
-            for ref_idx in range(self.number_ref_views):
-                if ref_idx == ref_view_list_idx:
+        x_ref_updated_list = []
+        for v in range(n_views):
+            v_view_id = idx_to_view_id[ref_view_idx][v] # view id of the current view
+            v_view_emb = x_all_per_view[ref_view_idx][:, v, :, :]
+            other_view_embs = [] # collect embeddings of the same input view from other reference views
+            other_positions = [] # collect positions of the same input view from other reference views
+            for other_ref_view_idx in range(self.number_ref_views):
+                if other_ref_view_idx == ref_view_idx:
                     continue
-                other_view_embs.append(xs_per_view[ref_idx][:, idx_to_view_id[ref_idx][ref_view_id], :, :])
+                other_view_embs.append(x_all_per_view[other_ref_view_idx][:, idx_to_view_id[other_ref_view_idx][v_view_id], :, :])
+                other_positions.append(positions[v_view_id])
             # do cross-attention between ref_view_emb and other_view_embs
-            x_per_view[:, v, :, :] = self.dec_blocks[depth](ref_view_emb, other_view_embs, mv=True)
-        x = rearrange(x_per_view, 'b n_views p_patches d -> b (n_views p_patches) d', n_views=n_views, p_patches=p_patches)
+            x_ref_v_updated, _ = self.dec_blocks[depth](v_view_emb, other_view_embs, positions[v_view_id], other_positions, mv=True)
+            x_ref_updated_list.append(x_ref_v_updated)
+        x_ref_updated = torch.stack(x_ref_updated_list, dim=1) # (b, n_views, p_patches, d)
+        x = rearrange(x_ref_updated, 'b n_views p_patches d -> b (n_views p_patches) d', n_views=n_views, p_patches=p_patches)
         return x
 
 

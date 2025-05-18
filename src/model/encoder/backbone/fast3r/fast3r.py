@@ -597,50 +597,29 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
                                                 batch_size=encoded_feats[0].shape[0],
                                                 num_views=len(encoded_feats),
                                                 max_image_idx=self.image_idx_emb.shape[0] - 1,
-                                                device=x.device)
+                                                device=encoded_feats[0].device)
+        encoded_feats = list(encoded_feats)
         for i in range(self.number_ref_views):
-            encoded_feats[0], encoded_feats[ref_view_ids[i]] = encoded_feats[ref_view_ids[i]], encoded_feats[0] # swap the ref view with the first one
+            encoded_feats[0], encoded_feats[ref_view_ids[i]] = \
+                encoded_feats[ref_view_ids[i]], encoded_feats[0] # swap the ref view with the first one
             x_i = torch.cat(encoded_feats, dim=1)
-            x_i = self.decoder_embed(x)
-            x_i += image_pos # assumes images have same number of patches
+            x_i = self.decoder_embed(x_i)
+            x_i += image_pos # FIXME assumes images have same number of patches
             x.append(x_i)
-            encoded_feats[0], encoded_feats[ref_view_ids[i]] = encoded_feats[ref_view_ids[i]], encoded_feats[0]
-        
+            encoded_feats[0], encoded_feats[ref_view_ids[i]] = \
+                encoded_feats[ref_view_ids[i]], encoded_feats[0]
+        final_output = [x[0]] # final_output contains features for the first reference view
         for depth, blk in enumerate(self.dec_blocks):
             for i in range(self.number_ref_views):
                 x[i] = blk(x[i], pos)
             y = [None for _ in range(self.number_ref_views)]
             for i in range(self.number_ref_views):
-                y[i] = self.crossRefBlockWrapper(x, n_views, n_patches, i, ref_view_ids, depth)
+                y[i] = self.crossRefBlockWrapper(x, positions, n_views, n_patches, i, ref_view_ids, depth)
             x = y
-        ########################################################
-        # TODO: process x[i] to make it passable to heads
-
-
-        """
-        Pseudo code:
-        for depth, blk in enumerate(self.dec_blocks):
-            #Forward pass through Decoder layer
-            for i in range(number_ref_views):
-                x[i][depth] = blk(x[i][depth-1], pos[i])
-            
-            #Forward pass through Cross Reference Layer
-            y =[None for _ in range(number_ref_views)]
-            for i in range(number_ref_views):  
-                y[i]= CrossRefBlock_wrapper(x[i][depth],except_i(x[depth],i))  
-
-            x.append(y) 
-
-            final_output.append(y)
-        
-        final_output = final_output[:,0]
-
-        x = final_output[-1]
-        x = self.dec_norm(x)
-        final_output[-1] = x
-
+            final_output.append(x[0])
+        final_output[-1] = self.dec_norm(final_output[-1])
         return final_output
-        """
+
 
 class LlamaDecoder(nn.Module):
     def __init__(
