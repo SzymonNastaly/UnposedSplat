@@ -67,6 +67,10 @@ class Fast3R(nn.Module):
             decoder_args = deepcopy(decoder_args)
             decoder_args.pop('decoder_type')
             self.decoder = Fast3RDecoder(**decoder_args)
+        elif decoder_args["decoder_type"] == 'fast3r_plus':
+            decoder_args = deepcopy(decoder_args)
+            decoder_args.pop('decoder_type')
+            self.decoder = Fast3RDecoderMultiRefView(**decoder_args)
         elif decoder_args["decoder_type"] == 'llama':
             decoder_args = deepcopy(decoder_args)
             decoder_args.pop('decoder_type')
@@ -386,6 +390,7 @@ class Fast3RDecoder(nn.Module):
         attn_implementation: str = "pytorch_naive",
         attn_bias_for_inference_enabled=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs
     ):
         super(Fast3RDecoder, self).__init__()
 

@@ -23,7 +23,7 @@ fast3r_params = {
         "attn_bias_for_inference_enabled": False,
         "attn_drop": 0.0,
         "attn_implementation": "flash_attention",
-        "decoder_type": "fast3r",
+        "decoder_type": "fast3r_plus", # fast3r_plus or fast3r
         "depth": 24,
         "drop": 0.0,
         "embed_dim": 1024,
@@ -31,7 +31,8 @@ fast3r_params = {
         "mlp_ratio": 4.0,
         "num_heads": 16,
         "qkv_bias": True,
-        "random_image_idx_embedding": True
+        "random_image_idx_embedding": True,
+        "number_ref_views": 3,
     }
 }
 
