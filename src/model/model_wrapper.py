@@ -27,6 +27,7 @@ from ..misc.LocalLogger import LOG_PATH, LocalLogger
 from ..misc.nn_module_tools import convert_to_buffer
 from ..misc.step_tracker import StepTracker
 from ..misc.utils import inverse_normalize, vis_depth_map, confidence_map, get_overlap_tag
+from ..misc.utils import swap_ref
 from ..visualization.annotation import add_label
 from ..visualization.camera_trajectory.interpolation import (
     interpolate_extrinsics,
@@ -155,6 +156,9 @@ class ModelWrapper(LightningModule):
         if self.distiller is not None:
             visualization_dump = {}
         gaussians = self.encoder(batch["context"], self.global_step, visualization_dump=visualization_dump)
+        n_ref = int(gaussians.means.shape[0] / batch["target"]["image"].shape[0])
+        if n_ref > 1:
+            batch = self.augment_for_mref(n_ref, batch)
         output = self.decoder.forward(
             gaussians,
             batch["target"]["extrinsics"],
@@ -225,6 +229,9 @@ class ModelWrapper(LightningModule):
                 batch["context"],
                 self.global_step,
             )
+        n_ref = int(gaussians.means.shape[0] / b)
+        if n_ref > 1:
+            gaussians = self.get_first_view(gaussians, n_ref)
 
         # align the target pose
         if self.test_cfg.align_pose:
@@ -362,6 +369,41 @@ class ModelWrapper(LightningModule):
         )
         self.benchmarker.summarize()
 
+    def augment_for_mref(self, n_ref: int, batch: BatchedExample):
+        """
+        Augment the batch for multi-reference evaluation.
+        This is used to create a batch with multiple references for each target.
+        """
+        def swap_views(batch_size, tensor):
+            for ref_view in range(1, n_ref):
+                for i in range(batch_size):
+                    swap_ref(tensor[batch_size * i + ref_view][0], tensor[batch_size * i + ref_view][ref_view])
+
+        if n_ref <= 1:
+            return batch
+
+        b = batch["target"]["image"].shape[0]
+        # Repeat the context and target images.
+        batch["target"]["intrinsics"] = batch["target"]["intrinsics"].repeat(n_ref, 1, 1, 1)
+        batch["target"]["extrinsics"] = batch["target"]["extrinsics"].repeat(n_ref, 1, 1, 1)
+        batch["target"]["near"] = batch["target"]["near"].repeat(n_ref, 1)
+        batch["target"]["far"] = batch["target"]["far"].repeat(n_ref, 1)
+        batch["target"]["image"] = batch["target"]["image"].repeat(n_ref, 1, 1, 1, 1)
+
+        swap_views(b, batch["target"]["extrinsics"])
+        swap_views(b, batch["target"]["image"])
+
+        return batch
+
+    def get_first_view(self, gaussians, n_ref):
+        batch_size = int(gaussians.means.shape[0] / n_ref)
+        gaussians.means = gaussians.means[:batch_size]
+        gaussians.covariances = gaussians.covariances[:batch_size]
+        gaussians.harmonics = gaussians.harmonics[:batch_size]
+        gaussians.opacities = gaussians.opacities[:batch_size]
+        return gaussians
+
+
     @rank_zero_only
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         batch: BatchedExample = self.data_shim(batch)
@@ -382,6 +424,9 @@ class ModelWrapper(LightningModule):
             self.global_step,
             visualization_dump=visualization_dump,
         )
+        n_ref = int(gaussians.means.shape[0] / b)
+        if n_ref > 1:
+            gaussians = self.get_first_view(gaussians, n_ref)
         output = self.decoder.forward(
             gaussians,
             batch["target"]["extrinsics"],
@@ -584,6 +629,9 @@ class ModelWrapper(LightningModule):
     ) -> None:
         # Render probabilistic estimate of scene.
         gaussians = self.encoder(batch["context"], self.global_step)
+        n_ref = int(gaussians.means.shape[0] / batch["context"]["image"].shape[0])
+        if n_ref > 1:
+            gaussians = self.get_first_view(gaussians, n_ref)
 
         t = torch.linspace(0, 1, num_frames, dtype=torch.float32, device=self.device)
         if smooth:

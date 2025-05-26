@@ -32,7 +32,7 @@ fast3r_params = {
         "num_heads": 16,
         "qkv_bias": True,
         "random_image_idx_embedding": True,
-        "number_ref_views": 3,
+        "number_ref_views": 2,
     }
 }
 

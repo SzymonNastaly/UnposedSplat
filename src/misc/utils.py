@@ -46,3 +46,12 @@ def get_overlap_tag(overlap):
         overlap_tag = "ignore"
 
     return overlap_tag
+
+def swap_ref(a, b):
+    if type(a) == torch.Tensor:
+        temp = a.clone()
+        a[:] = b.clone()
+        b[:] = temp
+    else:
+        raise NotImplementedError
+

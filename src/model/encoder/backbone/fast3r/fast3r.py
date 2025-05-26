@@ -27,6 +27,7 @@ from .croco.models.pos_embed import RoPE2D, get_1d_sincos_pos_embed_from_grid
 from .components.llama import TransformerBlock, RMSNorm, precompute_freqs_cis
 from .patch_embed import get_patch_embed
 from functools import partial
+import copy
 
 
 
@@ -166,6 +167,14 @@ class Fast3R(nn.Module):
                 shapes.append(true_shape)
 
         return encoded_feats, positions, shapes
+    
+    def swap_ref(self, a, b):
+        if type(a) == torch.Tensor:
+            temp = a.clone()
+            a[:] = b.clone()
+            b[:] = temp
+        else:
+            raise NotImplementedError
 
     def forward(self, context):
         """
@@ -217,7 +226,13 @@ class Fast3R(nn.Module):
                 P_patches=P_patches
             )
             dec_feat.append(layer_output)
-        shape = torch.tensor([h, w])[None, None, :].repeat(b, v, 1)
+        n_ref = int(dec_feat[0].shape[0] / b)
+        images_all = images_all.repeat(n_ref, 1, 1, 1, 1)
+        print(images_all.shape)
+        for ref_view in range(1, n_ref):
+            for i in range(b):
+                self.swap_ref(images_all[b * i + ref_view][0], images_all[b * i + ref_view][ref_view])
+        shape = torch.tensor([h, w])[None, None, :].repeat(dec_feat[0].shape[0], v, 1)
         return dec_feat, shape, images_all
 
 class CroCoEncoder(nn.Module):
@@ -578,10 +593,7 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
         per_rank_generator = self._generate_per_rank_generator()
         refernce_view_ids = torch.randperm(input_views, generator=per_rank_generator)[:self.number_ref_views]
         return refernce_view_ids # 1D tensor with number_ref_views elements
-    
-    def except_i(x, i):
-        """ Returns a list of tensors excluding the i-th tensor from the input list x. """
-        return [x[j] for j in range(len(x)) if j != i]
+
 
     def forward(self, encoded_feats, positions, image_ids):
         """ Forward pass through the decoder.
@@ -596,7 +608,7 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
         if self.number_ref_views >= n_views:
             raise ValueError(f"Number of reference views {self.number_ref_views} exceeds the number of input views {n_views}")
         pos = torch.cat(positions, dim=1) # FIXME assumes images have same number of patches (or more)
-        ref_view_ids = self._get_random_ref_view_ids(n_views)
+        ref_view_ids = list(range(self.number_ref_views)) # use first self.number_ref_views views as reference views
         x = []
         image_pos = self._get_random_image_pos(encoded_feats=encoded_feats,
                                                 batch_size=encoded_feats[0].shape[0],
@@ -613,7 +625,7 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
             x.append(x_i)
             encoded_feats[0], encoded_feats[ref_view_ids[i]] = \
                 encoded_feats[ref_view_ids[i]], encoded_feats[0]
-        final_output = [x[0]] # final_output contains features for the first reference view
+        final_output = [x]
         for depth, blk in enumerate(self.dec_blocks):
             for i in range(self.number_ref_views):
                 x[i] = blk(x[i], pos)
@@ -621,8 +633,9 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
             for i in range(self.number_ref_views):
                 y[i] = self.crossRefBlockWrapper(x, positions, n_views, n_patches, i, ref_view_ids, depth)
             x = y
-            final_output.append(x[0])
-        final_output[-1] = self.dec_norm(final_output[-1])
+            final_output.append(copy.copy(x))
+        final_output[-1] = tuple(map(self.dec_norm, final_output[-1]))
+        final_output = [torch.cat(x_d, dim=0) for x_d in final_output] # cat along the batch dimension (b*n_ref, n_patches, d)
         return final_output
 
 
