@@ -377,7 +377,7 @@ class ModelWrapper(LightningModule):
         def swap_views(batch_size, tensor):
             for ref_view in range(1, n_ref):
                 for i in range(batch_size):
-                    swap_ref(tensor[batch_size * i + ref_view][0], tensor[batch_size * i + ref_view][ref_view])
+                    swap_ref(tensor[batch_size * ref_view + i][0], tensor[batch_size * ref_view + i][ref_view])
 
         if n_ref <= 1:
             return batch
@@ -390,6 +390,7 @@ class ModelWrapper(LightningModule):
         batch["target"]["far"] = batch["target"]["far"].repeat(n_ref, 1)
         batch["target"]["image"] = batch["target"]["image"].repeat(n_ref, 1, 1, 1, 1)
 
+        swap_views(b, batch["target"]["intrinsics"])
         swap_views(b, batch["target"]["extrinsics"])
         swap_views(b, batch["target"]["image"])
 

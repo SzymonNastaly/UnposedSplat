@@ -27,7 +27,6 @@ from .croco.models.pos_embed import RoPE2D, get_1d_sincos_pos_embed_from_grid
 from .components.llama import TransformerBlock, RMSNorm, precompute_freqs_cis
 from .patch_embed import get_patch_embed
 from functools import partial
-import copy
 
 
 
@@ -228,7 +227,6 @@ class Fast3R(nn.Module):
             dec_feat.append(layer_output)
         n_ref = int(dec_feat[0].shape[0] / b)
         images_all = images_all.repeat(n_ref, 1, 1, 1, 1)
-        print(images_all.shape)
         for ref_view in range(1, n_ref):
             for i in range(b):
                 self.swap_ref(images_all[b * i + ref_view][0], images_all[b * i + ref_view][ref_view])
@@ -633,7 +631,7 @@ class Fast3RDecoderMultiRefView(Fast3RDecoder):
             for i in range(self.number_ref_views):
                 y[i] = self.crossRefBlockWrapper(x, positions, n_views, n_patches, i, ref_view_ids, depth)
             x = y
-            final_output.append(copy.copy(x))
+            final_output.append([x_i.clone() for x_i in x])
         final_output[-1] = tuple(map(self.dec_norm, final_output[-1]))
         final_output = [torch.cat(x_d, dim=0) for x_d in final_output] # cat along the batch dimension (b*n_ref, n_patches, d)
         return final_output
