@@ -212,6 +212,8 @@ class CrossRefBlockWrapper(nn.Module):
         self.dec_blocks = nn.ModuleList([
             DecoderBlock(dec_embed_dim, dec_num_heads, mlp_ratio=mlp_ratio, qkv_bias=True, norm_layer=norm_layer, norm_mem=norm_im2_in_dec, rope=None)
             for i in range(dec_depth)]) #FIXME what with rope
+        for block in self.dec_blocks:
+            block.zero_init_last_all()
 
 
     def forward(self, x_all, positions, n_views, p_patches, ref_view_idx, ref_view_ids, depth):
@@ -426,6 +428,14 @@ class DecoderBlock(nn.Module):
             drop=drop,
         )
         self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
+
+    def zero_init_last_all(self):
+        nn.init.zeros_(self.attn.proj.weight)
+        nn.init.zeros_(self.attn.proj.bias)
+        nn.init.zeros_(self.cross_attn.proj.weight)
+        nn.init.zeros_(self.cross_attn.proj.bias)
+        nn.init.zeros_(self.mlp.fc2.weight)
+        nn.init.zeros_(self.mlp.fc2.bias)
 
     def forward(self, x, y, xpos, ypos, mv = False, coeff = 1.0):
         if not mv:
