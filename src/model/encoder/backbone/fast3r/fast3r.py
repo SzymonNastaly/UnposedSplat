@@ -229,7 +229,7 @@ class Fast3R(nn.Module):
         images_all = images_all.repeat(n_ref, 1, 1, 1, 1)
         for ref_view in range(1, n_ref):
             for i in range(b):
-                self.swap_ref(images_all[b * i + ref_view][0], images_all[b * i + ref_view][ref_view])
+                self.swap_ref(images_all[b * ref_view + i][0], images_all[b * ref_view + i][ref_view])
         shape = torch.tensor([h, w])[None, None, :].repeat(dec_feat[0].shape[0], v, 1)
         return dec_feat, shape, images_all
 
