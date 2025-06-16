@@ -246,6 +246,9 @@ class CrossRefBlockWrapper(nn.Module):
             v_view_emb = x_all_per_view[ref_view_idx][:, v, :, :]
             other_view_embs = [] # collect embeddings of the same input view from other reference views
             other_positions = [] # collect positions of the same input view from other reference views
+            if v == 0:
+                x_ref_updated_list.append(v_view_emb)
+                continue
             for other_ref_view_idx in range(self.number_ref_views):
                 if other_ref_view_idx == ref_view_idx:
                     continue
