@@ -8,8 +8,10 @@ from torch import Tensor
 from .coordinate_conversion import generate_conversions
 from .rendering import render_over_image
 from .types import Pair, Scalar, Vector, sanitize_scalar, sanitize_vector
+from typing import no_type_check
 
 
+@no_type_check
 def draw_lines(
     image: Float[Tensor, "3 height width"],
     start: Vector,

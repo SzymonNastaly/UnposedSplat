@@ -4,6 +4,7 @@ import torch
 from einops import repeat
 from jaxtyping import Float, Shaped
 from torch import Tensor
+from typing import no_type_check
 
 Real = Union[float, int]
 
@@ -15,6 +16,7 @@ Vector = Union[
 ]
 
 
+@no_type_check
 def sanitize_vector(
     vector: Vector,
     dim: int,
@@ -41,6 +43,7 @@ Scalar = Union[
 ]
 
 
+@no_type_check
 def sanitize_scalar(scalar: Scalar, device: torch.device) -> Float[Tensor, "*#batch"]:
     if isinstance(scalar, Tensor):
         scalar = scalar.type(torch.float32).to(device)
@@ -58,6 +61,7 @@ Pair = Union[
 ]
 
 
+@no_type_check
 def sanitize_pair(pair: Pair, device: torch.device) -> Float[Tensor, "2"]:
     if isinstance(pair, Tensor):
         pair = pair.type(torch.float32).to(device)
