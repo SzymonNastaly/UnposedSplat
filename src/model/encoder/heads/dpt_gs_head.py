@@ -12,6 +12,7 @@ from einops import rearrange
 from typing import List
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 # import dust3r.utils.path_to_croco
 from .dpt_block import DPTOutputAdapter, Interpolate, make_fusion_block
 from .head_modules import UnetExtractor
@@ -122,11 +123,14 @@ class DPTOutputAdapter_fix(DPTOutputAdapter):
         # H, W = input_info['image_size']
         image_size = self.image_size if image_size is None else image_size
         H, W = image_size
+        self.P_H = 14
+        self.P_W = 14
         # Number of patches in height and width
         N_H = H // (self.stride_level * self.P_H)
         N_W = W // (self.stride_level * self.P_W)
 
         # Hook decoder onto 4 layers from specified ViT layers
+        self.hooks = [0,8,16,23]
         layers = [encoder_tokens[hook] for hook in self.hooks]
 
         # Extract only task-relevant tokens and ignore global tokens.
@@ -139,6 +143,7 @@ class DPTOutputAdapter_fix(DPTOutputAdapter):
         # Project layers to chosen feature dim
         layers = [self.scratch.layer_rn[idx](l) for idx, l in enumerate(layers)]
 
+
         # Fuse layers using refinement stages
         path_4 = self.scratch.refinenet4(layers[3])[:, :, :layers[2].shape[2], :layers[2].shape[3]]
         path_3 = self.scratch.refinenet3(path_4, layers[2])
@@ -147,6 +152,13 @@ class DPTOutputAdapter_fix(DPTOutputAdapter):
 
         direct_img_feat = self.input_merger(imgs)
         path_1 = self.feat_up(path_1)
+
+        path_1 = F.interpolate(
+            path_1,
+            size=direct_img_feat.shape[-2:],    # (252, 252)
+            mode='bilinear',
+            align_corners=False
+        )
         path_1 = path_1 + direct_img_feat
 
         # path_1 = torch.cat([path_1, imgs], dim=1)

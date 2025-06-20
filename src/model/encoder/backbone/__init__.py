@@ -7,6 +7,7 @@ from .backbone_dino import BackboneDino, BackboneDinoCfg
 from .backbone_resnet import BackboneResnet, BackboneResnetCfg
 from .backbone_croco import AsymmetricCroCo, BackboneCrocoCfg
 from .backbone_fast3r import BackboneFast3R, BackboneFast3RCfg
+from .backbone_vggt import BackboneVggt, BackboneVggtCfg
 
 BACKBONES: dict[str, Backbone[Any]] = {
     "resnet": BackboneResnet,
@@ -14,9 +15,10 @@ BACKBONES: dict[str, Backbone[Any]] = {
     "croco": AsymmetricCroCo,
     "croco_multi": AsymmetricCroCoMulti,
     "fast3r": BackboneFast3R,
+    "vggt": BackboneVggt 
 }
 
-BackboneCfg = BackboneResnetCfg | BackboneDinoCfg | BackboneCrocoCfg | BackboneFast3RCfg
+BackboneCfg = BackboneResnetCfg | BackboneDinoCfg | BackboneCrocoCfg | BackboneFast3RCfg | BackboneVggtCfg
 
 
 def get_backbone(cfg: BackboneCfg, d_in: int = 3) -> nn.Module:

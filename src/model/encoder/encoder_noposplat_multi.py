@@ -55,8 +55,10 @@ class EncoderNoPoSplatMulti(Encoder[EncoderNoPoSplatCfg]):
             self.gaussian_adapter = UnifiedGaussianAdapter(cfg.gaussian_adapter)
         else:
             self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter)
-
-        self.patch_size = self.backbone.patch_embed.patch_size[0]
+        if cfg.backbone.name == "vggt":
+            self.patch_size = self.backbone.patch_embed.patch_size
+        else:
+            self.patch_size = self.backbone.patch_embed.patch_size[0]
         self.raw_gs_dim = 1 + self.gaussian_adapter.d_in  # 1 for opacity
 
         self.gs_params_head_type = cfg.gs_params_head_type

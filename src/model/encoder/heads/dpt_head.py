@@ -37,11 +37,15 @@ class DPTOutputAdapter_fix(DPTOutputAdapter):
         # H, W = input_info['image_size']
         image_size = self.image_size if image_size is None else image_size
         H, W = image_size
+        self.P_H = 14
+        self.P_W = 14
         # Number of patches in height and width
         N_H = H // (self.stride_level * self.P_H)
         N_W = W // (self.stride_level * self.P_W)
 
         # Hook decoder onto 4 layers from specified ViT layers
+        if H == 252:
+            self.hooks = [0,8,16,23] # TODO: Fix this
         layers = [encoder_tokens[hook] for hook in self.hooks]
 
         # Extract only task-relevant tokens and ignore global tokens.
@@ -64,6 +68,12 @@ class DPTOutputAdapter_fix(DPTOutputAdapter):
         #     ray_embedding = F.interpolate(ray_embedding, size=(path_1.shape[2], path_1.shape[3]), mode='bilinear')
         #     path_1 = torch.cat([path_1, ray_embedding], dim=1)
 
+        path_1 = F.interpolate(
+            path_1,
+            size=126, 
+            mode='bilinear',
+            align_corners=False
+        )
         # Output head
         out = self.head(path_1)
 
