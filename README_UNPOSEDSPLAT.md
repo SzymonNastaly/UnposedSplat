@@ -1,9 +1,10 @@
 # UnposedSplat(+)
 
-**UnposedSplat(+)** builds on top of **NoPoSplat**, extending it to support multiple input views.
+**UnposedSplat(+)** builds on top of **NoPoSplat**, extending it to support multiple input views. This README is complementary to the main NoPoSplat README.
 
 ## Running Experiments
 
+Before running experiments, install packages from requirements_unposedsplat.txt (make sure to install PyTorch before the Gaussian Rasterizer).
 You can run experiments similarly to **NoPoSplat**, following the instructions in its `README.md`.
 
 ## Configuration Options
