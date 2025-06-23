@@ -185,8 +185,6 @@ class DepthAnythingV2(nn.Module):
     
     @torch.no_grad()
     def infer_image(self, image, input_size=518):
-        # image, (h, w) = self.image2tensor(raw_image, input_size)
-        print(f"shape of image in infer_image: {image.shape}")
         h = 252
         w = 252
         
