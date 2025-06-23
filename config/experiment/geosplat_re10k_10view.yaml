@@ -1,0 +1,47 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.re10k: re10k
+  - override /loss: [mse, lpips]
+
+wandb:
+  name: re10k_10view
+  tags: [re10k, 256x256]
+
+model:
+  encoder:
+    backbone:
+      name: vggt
+    name: noposplat_multi
+    gs_params_head_type: dpt_gs
+    pose_free: true
+    intrinsics_embed_loc: encoder
+    intrinsics_embed_type: token
+    # pretrained_weights: '/cluster/scratch/tgueloglu/outputs/exp_geosplat_re10k_5view_2batch_backlr02/2025-06-18_21-02-00/checkpoints/epoch_0-step_15050.ckpt'
+
+  decoder:
+    make_scale_invariant: true
+
+dataset:
+  re10k:
+    input_image_shape: [252,252]
+    view_sampler:
+      warm_up_steps: 9375
+      num_context_views: 10 
+    roots: [/cluster/project/cvg/haofei/datasets/depthsplat/re10k/]
+
+optimizer:
+  lr: 1e-4
+  warm_up_steps: 125
+  backbone_lr_multiplier: 0.1
+
+data_loader:
+  train:
+    batch_size: 8
+
+trainer:
+  max_steps: 80000000
+  val_check_interval: 1000
+
+checkpointing:
+  every_n_train_steps: 4075
