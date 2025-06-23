@@ -156,6 +156,14 @@ def train(cfg_dict: DictConfig):
             missing_keys, unexpected_keys = encoder.load_state_dict(ckpt_weights, strict=False)
         else:
             raise ValueError(f"Invalid checkpoint format: {weight_path}")
+ 
+    if checkpoint_path and cfg.mode == "test":
+        ckpt_weights = torch.load(checkpoint_path, map_location='cpu')
+        if 'state_dict' in ckpt_weights:
+            ckpt_weights = ckpt_weights['state_dict']
+            ckpt_weights = {k[8:]: v for k, v in ckpt_weights.items() if k.startswith('encoder.')}
+            missing_keys, unexpected_keys = encoder.load_state_dict(ckpt_weights, strict=False)
+
 
     model_wrapper = ModelWrapper(
         cfg.optimizer,
@@ -180,9 +188,8 @@ def train(cfg_dict: DictConfig):
     else:
         trainer.test(
             model_wrapper,
-            datamodule=data_module,
-            ckpt_path=checkpoint_path,
-        )
+            datamodule=data_module
+    )
 
 
 if __name__ == "__main__":

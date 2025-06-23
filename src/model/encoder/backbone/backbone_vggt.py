@@ -63,7 +63,7 @@ class BackboneVggtCfg:
 class BackboneVggt(Aggregator):
     def __init__(self, cfg: BackboneVggtCfg, d_in: int) -> None:
         super().__init__(img_size=252)
-
+        '''
         _URL = "https://huggingface.co/facebook/VGGT-1B/resolve/main/model.pt"
         ckpt_weights = torch.hub.load_state_dict_from_url(_URL)
         ckpt_weights = {k[len('aggregator.'):]: v for k, v in ckpt_weights.items() if k.startswith('aggregator.')}
@@ -74,7 +74,7 @@ class BackboneVggt(Aggregator):
         )
         print("[backbone_vggt.py]NOT LOADING ORIGINAL VGGT WEIGHTS")
         # missing_keys, unexpected_keys = self.load_state_dict(ckpt_weights, strict=True)
-
+        '''
         # self.patch_embed_cls = cfg.patch_embed_cls
         # self.intrinsics_embed_encoder_dim = 0
         # self._set_patch_embed(fast3r_params['encoder_args']['img_size'], fast3r_params['encoder_args']['patch_size'], fast3r_params['encoder_args']['embed_dim'])
