@@ -39,4 +39,4 @@ To experiment with the VGG-T backbone, switch to the corresponding Git branch:
 git checkout vggt-backbone
 ```
 
-Full integration of this backbone into main is still in progress.
+Full integration of this backbone into main is still in progress (Check out the [UnposedSplat GitHub repository](https://github.com/SzymonNastaly/UnposedSplat?tab=readme-ov-file#))
